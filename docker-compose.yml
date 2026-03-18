@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    container_name: fitness_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    env_file:
+      - .env
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    networks:
+      - analytics_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  generator:
+    build: ./generator
+    container_name: fitness_generator
+    restart: unless-stopped
+    environment:
+      DB_HOST: ${POSTGRES_HOST}
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      GENERATOR_INTERVAL: ${GENERATOR_INTERVAL}
+      GENERATOR_BATCH_SIZE: ${GENERATOR_BATCH_SIZE}
+      GENERATOR_HISTORY_DAYS: ${GENERATOR_HISTORY_DAYS}
+      PYTHONUNBUFFERED: "1"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - analytics_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redash:
+    image: redash/redash:latest
+    container_name: fitness_redash
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      REDASH_LOG_LEVEL: ${REDASH_LOG_LEVEL}
+      REDASH_REDIS_URL: "redis://redis:6379/0"
+      REDASH_DATABASE_URL: "postgresql://${REDASH_POSTGRES_USER}:${REDASH_POSTGRES_PASSWORD}@${REDASH_POSTGRES_HOST}/postgres"
+      REDASH_COOKIE_SECRET: ${REDASH_COOKIE_SECRET}
+      REDASH_SECRET_KEY: ${REDASH_SECRET_KEY}
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    networks:
+      - analytics_net
+
+  postgres:
+    image: postgres:13
+    container_name: redash_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${REDASH_POSTGRES_DB}
+      POSTGRES_USER: ${REDASH_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${REDASH_POSTGRES_PASSWORD}
+    env_file:
+      - .env
+    volumes:
+      - redash_postgres_data:/var/lib/postgresql/data
+    networks:
+      - analytics_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${REDASH_POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:6
+    container_name: fitness_redis
+    restart: unless-stopped
+    networks:
+      - analytics_net
+
+volumes:
+  postgres_data:
+  redash_postgres_data:
+
+networks:
+  analytics_net:
+    driver: bridge
