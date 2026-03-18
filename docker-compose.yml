@@ -50,31 +50,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  redash:
-    image: redash/redash:latest
-    container_name: fitness_redash
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    environment:
-      REDASH_LOG_LEVEL: ${REDASH_LOG_LEVEL}
-      REDASH_REDIS_URL: "redis://redis:6379/0"
-      REDASH_DATABASE_URL: "postgresql://${REDASH_POSTGRES_USER}:${REDASH_POSTGRES_PASSWORD}@${REDASH_POSTGRES_HOST}/postgres"
-      REDASH_COOKIE_SECRET: ${REDASH_COOKIE_SECRET}
-      REDASH_SECRET_KEY: ${REDASH_SECRET_KEY}
-    env_file:
-      - .env
-    ports:
-      - "5000:5000"
-    networks:
-      - analytics_net
-
-  postgres:
+  redash-postgres:
     image: postgres:13
     container_name: redash_postgres
     restart: unless-stopped
@@ -98,6 +74,97 @@ services:
     image: redis:6
     container_name: fitness_redis
     restart: unless-stopped
+    networks:
+      - analytics_net
+
+  redash-setup:
+    image: redash/redash:latest
+    container_name: redash_setup
+    restart: "no"
+    command: create_db
+    depends_on:
+      redash-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      REDASH_LOG_LEVEL: ${REDASH_LOG_LEVEL}
+      REDASH_REDIS_URL: "redis://redis:6379/0"
+      REDASH_DATABASE_URL: "postgresql://${REDASH_POSTGRES_USER}:${REDASH_POSTGRES_PASSWORD}@redash-postgres/${REDASH_POSTGRES_DB}"
+      REDASH_COOKIE_SECRET: ${REDASH_COOKIE_SECRET}
+      REDASH_SECRET_KEY: ${REDASH_SECRET_KEY}
+    env_file:
+      - .env
+    networks:
+      - analytics_net
+
+  redash:
+    image: redash/redash:latest
+    container_name: fitness_redash
+    restart: unless-stopped
+    depends_on:
+      redash-setup:
+        condition: service_completed_successfully
+      redash-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      REDASH_LOG_LEVEL: ${REDASH_LOG_LEVEL}
+      REDASH_REDIS_URL: "redis://redis:6379/0"
+      REDASH_DATABASE_URL: "postgresql://${REDASH_POSTGRES_USER}:${REDASH_POSTGRES_PASSWORD}@redash-postgres/${REDASH_POSTGRES_DB}"
+      REDASH_COOKIE_SECRET: ${REDASH_COOKIE_SECRET}
+      REDASH_SECRET_KEY: ${REDASH_SECRET_KEY}
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    networks:
+      - analytics_net
+
+  redash-worker:
+    image: redash/redash:latest
+    container_name: redash_worker
+    restart: unless-stopped
+    command: worker
+    depends_on:
+      redash-setup:
+        condition: service_completed_successfully
+      redash-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      REDASH_LOG_LEVEL: ${REDASH_LOG_LEVEL}
+      REDASH_REDIS_URL: "redis://redis:6379/0"
+      REDASH_DATABASE_URL: "postgresql://${REDASH_POSTGRES_USER}:${REDASH_POSTGRES_PASSWORD}@redash-postgres/${REDASH_POSTGRES_DB}"
+      REDASH_COOKIE_SECRET: ${REDASH_COOKIE_SECRET}
+      REDASH_SECRET_KEY: ${REDASH_SECRET_KEY}
+    env_file:
+      - .env
+    networks:
+      - analytics_net
+
+  redash-scheduler:
+    image: redash/redash:latest
+    container_name: redash_scheduler
+    restart: unless-stopped
+    command: scheduler
+    depends_on:
+      redash-setup:
+        condition: service_completed_successfully
+      redash-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      REDASH_LOG_LEVEL: ${REDASH_LOG_LEVEL}
+      REDASH_REDIS_URL: "redis://redis:6379/0"
+      REDASH_DATABASE_URL: "postgresql://${REDASH_POSTGRES_USER}:${REDASH_POSTGRES_PASSWORD}@redash-postgres/${REDASH_POSTGRES_DB}"
+      REDASH_COOKIE_SECRET: ${REDASH_COOKIE_SECRET}
+      REDASH_SECRET_KEY: ${REDASH_SECRET_KEY}
+    env_file:
+      - .env
     networks:
       - analytics_net
 
