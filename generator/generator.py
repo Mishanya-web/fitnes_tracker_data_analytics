@@ -48,7 +48,6 @@ class FitnessDataGenerator:
                 'hr_range': (60, 75),
                 'calories_per_min': (1.0, 1.8),
                 'intensity': 'low',
-                'emoji': '😴',
                 'probability_weights': {
                     'night': 0.8,
                     'morning': 0.2,
@@ -63,7 +62,6 @@ class FitnessDataGenerator:
                 'hr_range': (85, 110),
                 'calories_per_min': (3.5, 5.5),
                 'intensity': 'moderate',
-                'emoji': '🚶',
                 'probability_weights': {
                     'night': 0.05,
                     'morning': 0.4,
@@ -78,7 +76,6 @@ class FitnessDataGenerator:
                 'hr_range': (130, 170),
                 'calories_per_min': (8.0, 12.0),
                 'intensity': 'high',
-                'emoji': '🏃',
                 'probability_weights': {
                     'night': 0.01,
                     'morning': 0.25,
@@ -93,7 +90,6 @@ class FitnessDataGenerator:
                 'hr_range': (120, 160),
                 'calories_per_min': (7.0, 11.0),
                 'intensity': 'high',
-                'emoji': '🚴',
                 'probability_weights': {
                     'night': 0.02,
                     'morning': 0.1,
@@ -108,7 +104,6 @@ class FitnessDataGenerator:
                 'hr_range': (115, 150),
                 'calories_per_min': (6.0, 10.0),
                 'intensity': 'moderate',
-                'emoji': '🏊',
                 'probability_weights': {
                     'night': 0.01,
                     'morning': 0.05,
@@ -123,7 +118,6 @@ class FitnessDataGenerator:
                 'hr_range': (70, 95),
                 'calories_per_min': (2.0, 4.0),
                 'intensity': 'low',
-                'emoji': '🧘',
                 'probability_weights': {
                     'night': 0.02,
                     'morning': 0.1,
@@ -138,7 +132,6 @@ class FitnessDataGenerator:
                 'hr_range': (100, 140),
                 'calories_per_min': (4.0, 7.0),
                 'intensity': 'moderate',
-                'emoji': '🏋️',
                 'probability_weights': {
                     'night': 0.01,
                     'morning': 0.1,
@@ -342,7 +335,6 @@ class FitnessDataGenerator:
 
                 self.stats['records_created'] += 1
 
-                activity_emoji = self.activities[record['activity_type']]['emoji']
                 time_str = record['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
 
                 additional_info = ""
@@ -350,7 +342,7 @@ class FitnessDataGenerator:
                     additional_info = f" [+{', '.join(record['additional_metrics'].keys())}]"
 
                 logger.info(
-                    f"[{time_str}] {activity_emoji} {user['first_name']}: "
+                    f"[{time_str}] {user['first_name']}: "
                     f"{record['activity_type']:15} | "
                     f"Шаги: {record['steps']:3d} | "
                     f"HR: {record['heart_rate']:3d} | "
