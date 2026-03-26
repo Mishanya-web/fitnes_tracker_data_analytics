@@ -24,121 +24,101 @@ class FitnessDataGenerator:
 
         self.db_config = {
             'dbname': os.getenv('DB_NAME', 'fitness_db'),
-            'user': os.getenv('DB_USER', 'user'),
+            'user': os.getenv('DB_USER', 'postgres'),
             'password': os.getenv('DB_PASSWORD', 'password'),
             'host': os.getenv('DB_HOST', 'db'),
             'port': '5432'
         }
 
         self.interval = float(os.getenv('GENERATOR_INTERVAL', '2.0'))
-        self.batch_size = int(os.getenv('GENERATOR_BATCH_SIZE', '3'))
-        self.history_days = int(os.getenv('GENERATOR_HISTORY_DAYS', '7'))
+        self.history_days = 0
 
         self.users = []
-        self.current_time = datetime.now()
+        self.user_state = {}
 
         self.stats = {
-            'records_created': 0,
-            'batches_created': 0
+            'records_created': 0
         }
 
-        self.activities = {
+        self.activities_config = {
             'Rest': {
-                'step_range': (0, 20),
-                'hr_range': (60, 75),
-                'calories_per_min': (1.0, 1.8),
-                'intensity': 'low',
+                'step_rate_per_sec': (0, 0),
+                'hr_range': (60, 80),
+                'calories_per_sec': (0.015, 0.025),
+                'duration_min': (5, 120),
                 'probability_weights': {
-                    'night': 0.8,
-                    'morning': 0.2,
-                    'day': 0.3,
-                    'evening': 0.25,
-                    'weekend_morning': 0.3,
-                    'weekend_day': 0.4
+                    'night': 0.95, 'morning': 0.70, 'day': 0.75, 'evening': 0.80,
+                    'weekend_morning': 0.65, 'weekend_day': 0.70, 'weekend_evening': 0.75
                 }
             },
             'Walking': {
-                'step_range': (70, 130),
-                'hr_range': (85, 110),
-                'calories_per_min': (3.5, 5.5),
-                'intensity': 'moderate',
+                'step_rate_per_sec': (1.5, 2.0),
+                'hr_range': (95, 120),
+                'calories_per_sec': (0.05, 0.08),
+                'duration_min': (10, 60),
                 'probability_weights': {
-                    'night': 0.05,
-                    'morning': 0.4,
-                    'day': 0.35,
-                    'evening': 0.4,
-                    'weekend_morning': 0.3,
-                    'weekend_day': 0.25
+                    'night': 0.01, 'morning': 0.60, 'day': 0.55, 'evening': 0.50,
+                    'weekend_morning': 0.70, 'weekend_day': 0.60, 'weekend_evening': 0.45
+                }
+            },
+            'Fast Walking': {
+                'step_rate_per_sec': (2.0, 2.5),
+                'hr_range': (110, 135),
+                'calories_per_sec': (0.07, 0.11),
+                'duration_min': (15, 45),
+                'probability_weights': {
+                    'night': 0.005, 'morning': 0.40, 'day': 0.35, 'evening': 0.30,
+                    'weekend_morning': 0.50, 'weekend_day': 0.40, 'weekend_evening': 0.25
                 }
             },
             'Running': {
-                'step_range': (150, 200),
-                'hr_range': (130, 170),
-                'calories_per_min': (8.0, 12.0),
-                'intensity': 'high',
+                'step_rate_per_sec': (2.5, 3.0),
+                'hr_range': (140, 175),
+                'calories_per_sec': (0.12, 0.18),
+                'duration_min': (5, 30),
                 'probability_weights': {
-                    'night': 0.01,
-                    'morning': 0.25,
-                    'day': 0.15,
-                    'evening': 0.2,
-                    'weekend_morning': 0.2,
-                    'weekend_day': 0.15
+                    'night': 0.002, 'morning': 0.35, 'day': 0.20, 'evening': 0.25,
+                    'weekend_morning': 0.45, 'weekend_day': 0.30, 'weekend_evening': 0.20
                 }
             },
             'Cycling': {
-                'step_range': (0, 0),
-                'hr_range': (120, 160),
-                'calories_per_min': (7.0, 11.0),
-                'intensity': 'high',
+                'step_rate_per_sec': (0, 0),
+                'hr_range': (120, 155),
+                'calories_per_sec': (0.10, 0.15),
+                'duration_min': (20, 90),
                 'probability_weights': {
-                    'night': 0.02,
-                    'morning': 0.1,
-                    'day': 0.1,
-                    'evening': 0.1,
-                    'weekend_morning': 0.1,
-                    'weekend_day': 0.1
-                }
-            },
-            'Swimming': {
-                'step_range': (0, 0),
-                'hr_range': (115, 150),
-                'calories_per_min': (6.0, 10.0),
-                'intensity': 'moderate',
-                'probability_weights': {
-                    'night': 0.01,
-                    'morning': 0.05,
-                    'day': 0.05,
-                    'evening': 0.03,
-                    'weekend_morning': 0.05,
-                    'weekend_day': 0.05
+                    'night': 0.005, 'morning': 0.20, 'day': 0.35, 'evening': 0.30,
+                    'weekend_morning': 0.35, 'weekend_day': 0.45, 'weekend_evening': 0.35
                 }
             },
             'Yoga': {
-                'step_range': (0, 30),
-                'hr_range': (70, 95),
-                'calories_per_min': (2.0, 4.0),
-                'intensity': 'low',
+                'step_rate_per_sec': (0, 0),
+                'hr_range': (70, 100),
+                'calories_per_sec': (0.03, 0.06),
+                'duration_min': (15, 75),
                 'probability_weights': {
-                    'night': 0.02,
-                    'morning': 0.1,
-                    'day': 0.03,
-                    'evening': 0.1,
-                    'weekend_morning': 0.1,
-                    'weekend_day': 0.05
+                    'night': 0.01, 'morning': 0.35, 'day': 0.25, 'evening': 0.40,
+                    'weekend_morning': 0.40, 'weekend_day': 0.35, 'weekend_evening': 0.45
                 }
             },
             'Strength Training': {
-                'step_range': (10, 50),
+                'step_rate_per_sec': (0.08, 0.25),
                 'hr_range': (100, 140),
-                'calories_per_min': (4.0, 7.0),
-                'intensity': 'moderate',
+                'calories_per_sec': (0.07, 0.12),
+                'duration_min': (20, 60),
                 'probability_weights': {
-                    'night': 0.01,
-                    'morning': 0.1,
-                    'day': 0.02,
-                    'evening': 0.1,
-                    'weekend_morning': 0.1,
-                    'weekend_day': 0.05
+                    'night': 0.003, 'morning': 0.30, 'day': 0.20, 'evening': 0.35,
+                    'weekend_morning': 0.35, 'weekend_day': 0.30, 'weekend_evening': 0.30
+                }
+            },
+            'Swimming': {
+                'step_rate_per_sec': (0, 0),
+                'hr_range': (115, 150),
+                'calories_per_sec': (0.11, 0.16),
+                'duration_min': (20, 60),
+                'probability_weights': {
+                    'night': 0.001, 'morning': 0.25, 'day': 0.30, 'evening': 0.20,
+                    'weekend_morning': 0.30, 'weekend_day': 0.40, 'weekend_evening': 0.25
                 }
             }
         }
@@ -149,10 +129,8 @@ class FitnessDataGenerator:
             if not self.conn or self.conn.closed:
                 self.conn = psycopg2.connect(**self.db_config)
                 self.cur = self.conn.cursor(cursor_factory=RealDictCursor)
-
             yield self.cur
             self.conn.commit()
-
         except Exception as e:
             if self.conn:
                 self.conn.rollback()
@@ -173,16 +151,29 @@ class FitnessDataGenerator:
                 if count == 0:
                     logger.info("Creating initial users...")
                     user_profiles = [
-                        {'age': 25, 'weight': 70, 'height': 175, 'fitness_level': 'advanced'},
-                        {'age': 34, 'weight': 82, 'height': 182, 'fitness_level': 'intermediate'},
-                        {'age': 28, 'weight': 63, 'height': 168, 'fitness_level': 'intermediate'},
-                        {'age': 45, 'weight': 78, 'height': 176, 'fitness_level': 'beginner'},
-                        {'age': 31, 'weight': 58, 'height': 165, 'fitness_level': 'beginner'}
+                        {'first_name': 'Алексей', 'last_name': 'Смирнов', 'age': 28, 'weight': 75,
+                         'fitness_level': 'advanced'},
+                        {'first_name': 'Мария', 'last_name': 'Иванова', 'age': 25, 'weight': 62,
+                         'fitness_level': 'intermediate'},
+                        {'first_name': 'Дмитрий', 'last_name': 'Кузнецов', 'age': 34, 'weight': 82,
+                         'fitness_level': 'intermediate'},
+                        {'first_name': 'Елена', 'last_name': 'Петрова', 'age': 45, 'weight': 70,
+                         'fitness_level': 'beginner'},
+                        {'first_name': 'Сергей', 'last_name': 'Волков', 'age': 31, 'weight': 78,
+                         'fitness_level': 'beginner'},
+                        {'first_name': 'Анна', 'last_name': 'Соколова', 'age': 22, 'weight': 58,
+                         'fitness_level': 'advanced'},
+                        {'first_name': 'Игорь', 'last_name': 'Морозов', 'age': 38, 'weight': 85,
+                         'fitness_level': 'intermediate'},
+                        {'first_name': 'Ольга', 'last_name': 'Новикова', 'age': 29, 'weight': 64,
+                         'fitness_level': 'intermediate'},
+                        {'first_name': 'Павел', 'last_name': 'Федоров', 'age': 42, 'weight': 88,
+                         'fitness_level': 'beginner'},
+                        {'first_name': 'Татьяна', 'last_name': 'Морозова', 'age': 33, 'weight': 68,
+                         'fitness_level': 'advanced'}
                     ]
 
                     for profile in user_profiles:
-                        first_name = self.faker.first_name()
-                        last_name = self.faker.last_name()
                         email = self.faker.unique.email()
                         phone = self.faker.unique.phone_number()[:20]
 
@@ -191,35 +182,55 @@ class FitnessDataGenerator:
                             (first_name, last_name, email, phone, age, weight, height, fitness_level)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                             RETURNING user_id, first_name, last_name, age, weight, fitness_level
-                        """, (first_name, last_name, email, phone,
-                              profile['age'], profile['weight'], profile['height'],
-                              profile['fitness_level']))
+                        """, (profile['first_name'], profile['last_name'], email, phone,
+                              profile['age'], profile['weight'], 170, profile['fitness_level']))
 
                         user = cur.fetchone()
                         self.users.append(user)
-                        logger.info(f"Created user: {first_name} {last_name} (ID: {user['user_id']})")
+                        self.initialize_user_state(user)
+                        logger.info(f"Created user: {profile['first_name']} {profile['last_name']}")
                 else:
-                    cur.execute("""
-                        SELECT user_id, first_name, last_name, age, weight, fitness_level
-                        FROM users
-                    """)
+                    cur.execute("SELECT user_id, first_name, last_name, age, weight, fitness_level FROM users")
                     self.users = cur.fetchall()
+                    for user in self.users:
+                        self.initialize_user_state(user)
                     logger.info(f"Loaded {len(self.users)} existing users")
 
         except Exception as e:
             logger.error(f"Failed to initialize users: {e}")
 
+    def initialize_user_state(self, user):
+        user_id = user['user_id']
+        self.user_state[user_id] = {
+            'total_steps': 0,
+            'total_calories': 0,
+            'current_activity': 'Rest',
+            'activity_start_time': datetime.now(),
+            'last_heart_rate': random.randint(65, 75),
+            'last_date': datetime.now().date()
+        }
+
+    def check_daily_reset(self, user_id, current_time):
+        state = self.user_state[user_id]
+        current_date = current_time.date()
+        if current_date > state['last_date']:
+            logger.debug(
+                f"User {user_id}: Day reset - Steps: {state['total_steps']}, Calories: {state['total_calories']:.0f}")
+            state['total_steps'] = 0
+            state['total_calories'] = 0
+            state['last_date'] = current_date
+            state['current_activity'] = 'Rest'
+
     def get_time_period(self, dt):
         hour = dt.hour
         is_weekend = dt.weekday() >= 5
-
         if is_weekend:
             if 5 <= hour <= 10:
                 return 'weekend_morning'
             elif 11 <= hour <= 16:
                 return 'weekend_day'
             else:
-                return 'evening'
+                return 'weekend_evening'
         else:
             if 0 <= hour <= 5:
                 return 'night'
@@ -230,191 +241,171 @@ class FitnessDataGenerator:
             else:
                 return 'evening'
 
-    def generate_timestamp(self, days_ago=0):
-        if days_ago > 0:
-
-            date = datetime.now() - timedelta(days=days_ago)
-
-            date = date.replace(
-                hour=random.randint(0, 23),
-                minute=random.randint(0, 59),
-                second=random.randint(0, 59),
-                microsecond=0
-            )
-            return date
-        else:
-            return datetime.now() - timedelta(seconds=random.randint(0, 5))
-
-    def generate_fitness_record(self, user, timestamp):
+    def update_activity(self, user, current_time):
         user_id = user['user_id']
+        state = self.user_state[user_id]
+        time_period = self.get_time_period(current_time)
 
-        time_period = self.get_time_period(timestamp)
+        if state['current_activity'] != 'Rest':
+            duration = (current_time - state['activity_start_time']).total_seconds() / 60
+            max_duration = self.activities_config[state['current_activity']]['duration_min'][1]
+            if duration > max_duration:
+                state['current_activity'] = 'Rest'
+                return
 
-        activities = []
-        weights = []
-        for act_name, act_config in self.activities.items():
-            activities.append(act_name)
-            weights.append(act_config['probability_weights'].get(time_period, 0.1))
+        if state['current_activity'] == 'Rest':
+            base_prob = self.activities_config['Rest']['probability_weights'].get(time_period, 0.5)
+            fitness_factor = {'beginner': 0.7, 'intermediate': 1.0, 'advanced': 1.3}.get(user['fitness_level'], 1.0)
 
-        activity_type = random.choices(activities, weights=weights)[0]
-        activity_meta = self.activities[activity_type]
+            if random.random() < base_prob * fitness_factor:
+                activities = [a for a in self.activities_config.keys() if a != 'Rest']
+                weights = []
+                for activity in activities:
+                    weight = self.activities_config[activity]['probability_weights'].get(time_period, 0.1)
+                    if user['fitness_level'] == 'beginner' and activity in ['Running', 'Cycling', 'Swimming']:
+                        weight *= 0.5
+                    elif user['fitness_level'] == 'advanced' and activity in ['Running', 'Cycling', 'Swimming']:
+                        weight *= 1.4
+                    weights.append(weight)
 
-        hr_adjustment = {
-            'beginner': 1.1,
-            'intermediate': 1.0,
-            'advanced': 0.9
-        }.get(user['fitness_level'], 1.0)
-
-        if activity_meta['step_range'][0] == 0 and activity_meta['step_range'][1] == 0:
-            steps = 0
+                total = sum(weights)
+                if total > 0:
+                    weights = [w / total for w in weights]
+                    new_activity = random.choices(activities, weights=weights)[0]
+                    state['current_activity'] = new_activity
+                    state['activity_start_time'] = current_time
         else:
-            steps = random.randint(activity_meta['step_range'][0], activity_meta['step_range'][1])
-            steps = int(steps * random.uniform(0.7, 1.3))
+            duration = (current_time - state['activity_start_time']).total_seconds() / 60
+            if random.random() < min(0.2, duration / 90):
+                state['current_activity'] = 'Rest'
 
-        base_hr = random.randint(activity_meta['hr_range'][0], activity_meta['hr_range'][1])
-        heart_rate = int(base_hr * hr_adjustment)
+    def update_metrics(self, user, seconds_passed):
+        user_id = user['user_id']
+        state = self.user_state[user_id]
+        activity = state['current_activity']
+        config = self.activities_config[activity]
 
-        age_factor = 1.0 - (user['age'] - 20) * 0.005
-        heart_rate = int(heart_rate * age_factor)
+        step_rate_min, step_rate_max = config['step_rate_per_sec']
+        if step_rate_max > 0:
+            step_rate = random.uniform(step_rate_min, step_rate_max)
+            steps_added = int(step_rate * seconds_passed)
+            state['total_steps'] += steps_added
 
-        base_calories = round(random.uniform(activity_meta['calories_per_min'][0],
-                                             activity_meta['calories_per_min'][1]), 2)
-        weight_factor = user['weight'] / 70
-        calories = round(base_calories * weight_factor * random.uniform(0.9, 1.1), 2)
+        cal_rate_min, cal_rate_max = config['calories_per_sec']
+        cal_rate = random.uniform(cal_rate_min, cal_rate_max)
+        cal_rate *= (user['weight'] / 70)
+        calories_added = cal_rate * seconds_passed
+        state['total_calories'] += calories_added
 
-        additional_metrics = {}
-        if random.random() < 0.15:
-            additional_metrics = {
-                'sleep_hours': round(random.uniform(5, 9), 1),
-                'sleep_quality': random.randint(1, 5),
-                'mood': random.randint(1, 5),
-                'stress_level': random.randint(1, 5)
-            }
+        return calories_added
+
+    def calculate_heart_rate(self, user, current_time):
+        user_id = user['user_id']
+        state = self.user_state[user_id]
+        activity = state['current_activity']
+        config = self.activities_config[activity]
+
+        resting_hr = {'beginner': 70, 'intermediate': 65, 'advanced': 60}.get(user['fitness_level'], 65)
+        resting_hr = int(resting_hr * (1.0 + (user['age'] - 30) * 0.003))
+
+        if activity == 'Rest':
+            target_hr = resting_hr + random.randint(-3, 3)
+        else:
+            duration = (current_time - state['activity_start_time']).total_seconds() / 60
+            duration_factor = min(1.0, duration / 15)
+            hr_min, hr_max = config['hr_range']
+            fitness_factor = {'beginner': 1.08, 'intermediate': 1.0, 'advanced': 0.92}.get(user['fitness_level'], 1.0)
+            target_hr = hr_min + (hr_max - hr_min) * duration_factor
+            target_hr *= fitness_factor
+            target_hr = int(target_hr) + random.randint(-3, 3)
+
+        max_change = 4
+        if state['last_heart_rate']:
+            diff = target_hr - state['last_heart_rate']
+            if abs(diff) > max_change:
+                target_hr = state['last_heart_rate'] + (max_change if diff > 0 else -max_change)
+
+        target_hr = max(45, min(200, target_hr))
+        state['last_heart_rate'] = target_hr
+        return target_hr
+
+    def generate_fitness_record(self, user, current_time, seconds_passed):
+        calories_added = self.update_metrics(user, seconds_passed)
+        heart_rate = self.calculate_heart_rate(user, current_time)
+        state = self.user_state[user['user_id']]
 
         return {
-            'user_id': user_id,
-            'steps': steps,
+            'user_id': user['user_id'],
+            'steps': state['total_steps'],
             'heart_rate': heart_rate,
-            'calories_burned': calories,
-            'activity_type': activity_type,
-            'intensity': activity_meta['intensity'],
-            'additional_metrics': additional_metrics,
-            'timestamp': timestamp
+            'calories_burned': state['total_calories'],
+            'calories_added': calories_added,
+            'activity_type': state['current_activity'],
+            'timestamp': current_time
         }
 
     def insert_record(self, record, user):
         try:
             with self.get_cursor() as cur:
-                insert_query = """
-                    INSERT INTO fitness_data (
-                        timestamp, user_id, user_name, user_age, user_weight,
-                        steps, heart_rate, calories_burned, 
-                        activity_type, activity_intensity,
-                        sleep_hours, sleep_quality, mood, stress_level
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
-                """
-
-                values = (
-                    record['timestamp'],
-                    record['user_id'],
+                cur.execute("""
+                    INSERT INTO fitness_data 
+                    (timestamp, user_id, user_name, user_age, user_weight, steps, heart_rate, calories_burned, activity_type)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    record['timestamp'], record['user_id'],
                     f"{user['first_name']} {user['last_name']}",
-                    user['age'],
-                    user['weight'],
-                    record['steps'],
-                    record['heart_rate'],
-                    record['calories_burned'],
-                    record['activity_type'],
-                    record['intensity'],
-                    record['additional_metrics'].get('sleep_hours'),
-                    record['additional_metrics'].get('sleep_quality'),
-                    record['additional_metrics'].get('mood'),
-                    record['additional_metrics'].get('stress_level')
-                )
-
-                cur.execute(insert_query, values)
-
+                    user['age'], user['weight'],
+                    record['steps'], record['heart_rate'],
+                    record['calories_burned'], record['activity_type']
+                ))
                 self.stats['records_created'] += 1
 
-                time_str = record['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
-
-                additional_info = ""
-                if record['additional_metrics']:
-                    additional_info = f" [+{', '.join(record['additional_metrics'].keys())}]"
-
+                time_str = record['timestamp'].strftime('%H:%M:%S')
                 logger.info(
-                    f"[{time_str}] {user['first_name']}: "
-                    f"{record['activity_type']:15} | "
-                    f"Шаги: {record['steps']:3d} | "
+                    f"[{time_str}] {user['first_name']:10} ({user['fitness_level']:12}): "
+                    f"{record['activity_type']:16} | "
+                    f"Шаги: {record['steps']:5d} | "
                     f"HR: {record['heart_rate']:3d} | "
-                    f"Ккал: {record['calories_burned']:5.2f}{additional_info}"
+                    f"Ккал: {record['calories_burned']:6.0f} (+{record['calories_added']:.1f})"
                 )
-
         except Exception as e:
             logger.error(f"Failed to insert record: {e}")
 
-    def generate_historical_data(self):
-        logger.info(f"Generating historical data for the last {self.history_days} days...")
-
-        for day in range(self.history_days, 0, -1):
-            records_per_day = random.randint(20, 40)
-            logger.info(f"Day {day}: generating {records_per_day} records")
-
-            for _ in range(records_per_day):
-                user = random.choice(self.users)
-                timestamp = self.generate_timestamp(days_ago=day)
-                record = self.generate_fitness_record(user, timestamp)
-                self.insert_record(record, user)
-
-            time.sleep(0.5)
-
-        logger.info("Historical data generation completed")
-
-    def generate_realtime_data(self):
-        for _ in range(self.batch_size):
-            user = random.choice(self.users)
-            timestamp = self.generate_timestamp()
-            record = self.generate_fitness_record(user, timestamp)
-            self.insert_record(record, user)
-
-        self.stats['batches_created'] += 1
-
-    def print_stats(self):
-        logger.info("=" * 60)
-        logger.info("FITNESS DATA GENERATOR STATISTICS")
-        logger.info("=" * 60)
-
-        for key, value in self.stats.items():
-            logger.info(f"{key.replace('_', ' ').title()}: {value}")
-
-        logger.info(f"Active users: {len(self.users)}")
-        logger.info("=" * 60)
-
     def run(self):
-        logger.info("🚀 Starting Fitness Data Generator...")
-        logger.info(f"Configuration: interval={self.interval}s, batch_size={self.batch_size}")
+        logger.info(f"🚀 Starting Fitness Data Generator (NO HISTORICAL DATA)")
+        logger.info(f"Configuration: interval={self.interval}s")
 
         self.initialize_users()
 
-        if self.stats['records_created'] == 0:
-            self.generate_historical_data()
+        self.last_generation_time = None
 
-        counter = 0
         try:
             while True:
-                self.generate_realtime_data()
+                start = time.time()
+                current_time = datetime.now()
 
-                if counter % 50 == 0:
-                    self.print_stats()
+                if not self.last_generation_time:
+                    seconds_passed = self.interval
+                else:
+                    seconds_passed = min((current_time - self.last_generation_time).total_seconds(), 10.0)
 
-                time.sleep(self.interval)
-                counter += 1
+                user = random.choice(self.users)
+                self.check_daily_reset(user['user_id'], current_time)
+                self.update_activity(user, current_time)
+                record = self.generate_fitness_record(user, current_time, seconds_passed)
+                self.insert_record(record, user)
+
+                self.last_generation_time = current_time
+
+                elapsed = time.time() - start
+                time.sleep(max(0, self.interval - elapsed))
 
         except KeyboardInterrupt:
-            logger.info("\n👋 Generator stopped by user")
+            logger.info("\n👋 Generator stopped")
             self.print_stats()
-        except Exception as e:
-            logger.error(f"Generator error: {e}")
-            self.print_stats()
+
+    def print_stats(self):
+        logger.info(f"Total records created: {self.stats['records_created']}")
 
 
 if __name__ == "__main__":

@@ -52,8 +52,7 @@ COMMENT ON COLUMN fitness_data.timestamp IS 'Время генерации да�
 
 CREATE INDEX IF NOT EXISTS idx_fitness_data_timestamp ON fitness_data (timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_fitness_data_user_id ON fitness_data (user_id);
-CREATE INDEX IF NOT EXISTS idx_fitness_data_activity ON fitness_data (activity_type, timestamp);
-CREATE INDEX IF NOT EXISTS idx_fitness_data_user_date ON fitness_data (user_id, date(timestamp));
+CREATE INDEX IF NOT EXISTS idx_fitness_data_activity ON fitness_data (activity_type);
 
 CREATE OR REPLACE VIEW hourly_stats AS
 SELECT
@@ -63,8 +62,7 @@ SELECT
     AVG(heart_rate) as avg_heart_rate,
     SUM(steps) as total_steps,
     SUM(calories_burned) as total_calories,
-    COUNT(*) as records_count,
-    MODE() WITHIN GROUP (ORDER BY activity_type) as dominant_activity
+    COUNT(*) as records_count
 FROM fitness_data
 GROUP BY date_trunc('hour', timestamp), user_id, user_name;
 
